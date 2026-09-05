@@ -655,6 +655,7 @@
 
             if(myPresenceRef) {
                 myPresenceRef.remove();
+                myPresenceRef = null;
             }
 
             const userKey = currentICName.replace(/[.#$\/\[\]]/g, "_");
@@ -772,6 +773,12 @@
                 createdAt: firebase.database.ServerValue.TIMESTAMP
             };
 
+            // Oda sahibi odadan ayrıldığında (disconnect olduğunda) odanın otomatik silinmesi kuralı
+            newRoomRef.onDisconnect().remove();
+            db.ref(`chats_public/${roomId}`).onDisconnect().remove();
+            db.ref(`chats_private/${roomId}`).onDisconnect().remove();
+            db.ref(`presence/${roomId}`).onDisconnect().remove();
+
             newRoomRef.set(roomData).then(() => {
                 closeCreateRoomModal();
                 enterRoom(roomId, roomName);
@@ -842,6 +849,7 @@
                     db.ref(`rooms/${currentRoomId}`).remove();
                     db.ref(`chats_public/${currentRoomId}`).remove();
                     db.ref(`chats_private/${currentRoomId}`).remove();
+                    db.ref(`presence/${currentRoomId}`).remove();
                     leaveRoom();
                 }
             });
@@ -853,7 +861,6 @@
             db.ref('rooms').on('value', (snapshot) => {
                 grid.innerHTML = '';
                 const rooms = snapshot.val() || {};
-                console.log("Firebase 'rooms' verisi:", rooms); // Tarayıcı konsolunda veriyi görmek için
                 
                 const roomKeys = Object.keys(rooms);
                 if(roomKeys.length === 0) {
@@ -863,7 +870,6 @@
 
                 roomKeys.forEach(roomId => {
                     const room = rooms[roomId];
-                    // room1, room2 gibi manuel eklenen ve içi nesne olmayan verileri filtrele veya destekle
                     if (!room || typeof room !== 'object') return;
 
                     let roomName = room.name || roomId;
@@ -887,7 +893,6 @@
                 });
             }, (error) => {
                 console.error("Firebase Read Error:", error);
-                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #ff4444; padding: 40px;">Odalar yüklenirken hata oluştu.</div>`;
             });
         }
 
@@ -896,7 +901,19 @@
             document.getElementById('lobby-view').style.display = 'none';
             document.getElementById('room-view').classList.add('active');
 
+            // Kullanıcı odaya girdiğinde presence konumunu oda ID'sine taşı ve eğer oda sahibiyse onDisconnect ile odayı sil
             updatePresence(roomId);
+            
+            db.ref(`rooms/${roomId}`).once('value', (snap) => {
+                const room = snap.val();
+                if (room && room.owner === currentICName) {
+                    db.ref(`rooms/${roomId}`).onDisconnect().remove();
+                    db.ref(`chats_public/${roomId}`).onDisconnect().remove();
+                    db.ref(`chats_private/${roomId}`).onDisconnect().remove();
+                    db.ref(`presence/${roomId}`).onDisconnect().remove();
+                }
+            });
+
             listenRoomData();
             listenMessages('public');
             listenMessages('private');
@@ -940,6 +957,7 @@
             });
         }
 
+        // Aktif oda oturumlarının anlık listelenmesi için .on dinleyicisi güçlendirildi
         function listenRoomActiveUsers() {
             if(!currentRoomId) return;
             db.ref(`presence/${currentRoomId}`).on('value', (snap) => {
@@ -972,7 +990,7 @@
             db.ref(`rooms/${currentRoomId}`).on('value', (snapshot) => {
                 const data = snapshot.val();
                 if(!data) {
-                    alert("Bu oda kapatıldı.");
+                    alert("Oda sahibi ayrıldığı için bu oda kapatıldı.");
                     leaveRoom();
                     return;
                 }
@@ -1069,7 +1087,7 @@
         function listenMessages(type) {
             const containerId = type === 'public' ? 'chat-messages-public' : 'chat-messages-private';
             const messagesContainer = document.getElementById(containerId);
-            const dbNode = type === 'public' ? `chats_public/${currentRoomId}` : `chats_private/${currentRowId}`;
+            const dbNode = type === 'public' ? `chats_public/${currentRoomId}` : `chats_private/${currentRoomId}`;
             
             if(!currentRoomId) return;
             
@@ -1122,7 +1140,7 @@
                 document.getElementById('mod-pass-input').value = '';
                 alert("Moderatör yetkisi aktif edildi!");
             } else {
-                alert("Hatalı Şifre!")
+                alert("Hatalı Şifre!");
             }
         }
 
