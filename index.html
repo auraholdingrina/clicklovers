@@ -655,7 +655,6 @@
 
             if(myPresenceRef) {
                 myPresenceRef.remove();
-                myPresenceRef = null;
             }
 
             const userKey = currentICName.replace(/[.#$\/\[\]]/g, "_");
@@ -773,13 +772,12 @@
                 createdAt: firebase.database.ServerValue.TIMESTAMP
             };
 
-            // Oda sahibi odadan ayrıldığında (disconnect olduğunda) odanın otomatik silinmesi kuralı
-            newRoomRef.onDisconnect().remove();
-            db.ref(`chats_public/${roomId}`).onDisconnect().remove();
-            db.ref(`chats_private/${roomId}`).onDisconnect().remove();
-            db.ref(`presence/${roomId}`).onDisconnect().remove();
-
             newRoomRef.set(roomData).then(() => {
+                // Oda sahibinin bağlantısı koptuğunda odanın ve sohbetlerin otomatik silinmesi
+                db.ref(`rooms/${roomId}`).onDisconnect().remove();
+                db.ref(`chats_public/${roomId}`).onDisconnect().remove();
+                db.ref(`chats_private/${roomId}`).onDisconnect().remove();
+
                 closeCreateRoomModal();
                 enterRoom(roomId, roomName);
             }).catch((error) => {
@@ -849,7 +847,6 @@
                     db.ref(`rooms/${currentRoomId}`).remove();
                     db.ref(`chats_public/${currentRoomId}`).remove();
                     db.ref(`chats_private/${currentRoomId}`).remove();
-                    db.ref(`presence/${currentRoomId}`).remove();
                     leaveRoom();
                 }
             });
@@ -893,6 +890,7 @@
                 });
             }, (error) => {
                 console.error("Firebase Read Error:", error);
+                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #ff4444; padding: 40px;">Odalar yüklenirken hata oluştu.</div>`;
             });
         }
 
@@ -901,19 +899,17 @@
             document.getElementById('lobby-view').style.display = 'none';
             document.getElementById('room-view').classList.add('active');
 
-            // Kullanıcı odaya girdiğinde presence konumunu oda ID'sine taşı ve eğer oda sahibiyse onDisconnect ile odayı sil
-            updatePresence(roomId);
-            
+            // Oda sahibiyse bağlantısı koptuğunda odanın silinmesi komutunu odaya katıldığında da tetikle
             db.ref(`rooms/${roomId}`).once('value', (snap) => {
                 const room = snap.val();
-                if (room && room.owner === currentICName) {
+                if(room && room.owner === currentICName) {
                     db.ref(`rooms/${roomId}`).onDisconnect().remove();
                     db.ref(`chats_public/${roomId}`).onDisconnect().remove();
                     db.ref(`chats_private/${roomId}`).onDisconnect().remove();
-                    db.ref(`presence/${roomId}`).onDisconnect().remove();
                 }
             });
 
+            updatePresence(roomId);
             listenRoomData();
             listenMessages('public');
             listenMessages('private');
@@ -921,6 +917,12 @@
         }
 
         function leaveRoom() {
+            if(currentRoomId) {
+                // Odadan çıkarken kullanıcıyı o oda listesinden hemen sil
+                const userKey = currentICName.replace(/[.#$\/\[\]]/g, "_");
+                db.ref(`presence/${currentRoomId}/${userKey}`).remove();
+            }
+
             currentRoomId = null;
             document.getElementById('room-view').classList.remove('active');
             document.getElementById('lobby-view').style.display = 'grid';
@@ -957,9 +959,9 @@
             });
         }
 
-        // Aktif oda oturumlarının anlık listelenmesi için .on dinleyicisi güçlendirildi
         function listenRoomActiveUsers() {
             if(!currentRoomId) return;
+            // .on('value' kullanılarak oda içindeki aktif kullanıcılar anlık olarak güncellenir)
             db.ref(`presence/${currentRoomId}`).on('value', (snap) => {
                 const users = snap.val() || {};
                 const listEl = document.getElementById('room-active-users-list');
@@ -990,7 +992,7 @@
             db.ref(`rooms/${currentRoomId}`).on('value', (snapshot) => {
                 const data = snapshot.val();
                 if(!data) {
-                    alert("Oda sahibi ayrıldığı için bu oda kapatıldı.");
+                    alert("Bu oda kapatıldı.");
                     leaveRoom();
                     return;
                 }
