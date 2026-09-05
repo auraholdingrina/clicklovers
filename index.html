@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Click Lovers - Canlı Yetişkin Web ve Özel Sohbet Sistemi</title>
+    <!-- Firebase SDK (Google CDN) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #0b0c10;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(18, 20, 26, 0.95);
+            border-bottom: 2px solid #ff2a6d;
+            padding: 10px 20px;
+            box-shadow: 0 0 20px rgba(255, 42, 109, 0.3);
+        }
+        .logo-box { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .mod-btn, .create-room-btn {
+            background: #2a2d3e;
+            color: #ffb74d;
+            border: 1px solid #ffb74d;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .mod-btn:hover, .create-room-btn:hover { background: #ffb74d; color: #000; }
+        .create-room-btn { background: #ff2a6d; color: #fff; border-color: #ff2a6d; }
+        .create-room-btn:hover { background: #d91b55; color: #fff; }
+
+        .room-status {
+            font-size: 13px; font-weight: bold; color: #4caf50;
+            background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3);
+            padding: 5px 12px; border-radius: 20px; display: flex; align-items: center; gap: 6px;
+        }
+        .status-dot { width: 8px; height: 8px; background-color: #4caf50; border-radius: 50%; box-shadow: 0 0 8px #4caf50; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+        /* Lobi Ekranı */
+        .lobby-main-layout {
+            padding: 30px 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+        }
+        @media (max-width: 1024px) {
+            .lobby-main-layout { grid-template-columns: 1fr; }
+        }
+
+        .lobby-container { display: flex; flex-direction: column; gap: 20px; }
+        .lobby-header-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #2a2d3e;
+            padding-bottom: 10px;
+        }
+        .lobby-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #ffb74d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .tables-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        .table-card {
+            background: rgba(20, 22, 30, 0.95);
+            border: 2px solid #2a2d3e;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            transition: all 0.3s;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.8);
+        }
+        .table-card:hover { border-color: #ff2a6d; transform: translateY(-5px); }
+        .table-card-header {
+            font-size: 16px; font-weight: bold; color: #fff;
+            display: flex; justify-content: space-between; align-items: center; word-break: break-all;
+        }
+        .table-card-info { font-size: 13px; color: #aaa; display: flex; flex-direction: column; gap: 5px; }
+        .enter-table-btn {
+            background: #ff2a6d; color: white; border: none; padding: 10px;
+            border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: background 0.2s;
+        }
+        .enter-table-btn:hover { background: #d91b55; }
+
+        /* Aktif Kullanıcılar Yan Panel */
+        .active-users-sidebar {
+            background: rgba(20, 22, 30, 0.95);
+            border: 2px solid #2a2d3e;
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 650px;
+        }
+        .sidebar-title {
+            font-size: 14px; font-weight: bold; color: #ffb74d;
+            border-bottom: 1px solid #2a2d3e; padding-bottom: 8px; text-transform: uppercase;
+        }
+        .users-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+        .user-item {
+            background: rgba(255, 255, 255, 0.03); padding: 8px 10px; border-radius: 6px; font-size: 12px;
+            display: flex; justify-content: space-between; align-items: center; border-left: 3px solid #4caf50;
+        }
+        .user-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .tag-watcher { background: rgba(76, 175, 80, 0.2); color: #4caf50; }
+        .tag-room { background: rgba(255, 42, 109, 0.2); color: #ff2a6d; }
+
+        /* Yayın Odası Ekranı */
+        .room-container {
+            display: none;
+            grid-template-columns: 1fr 380px;
+            gap: 15px;
+            padding: 15px;
+            flex: 1;
+            max-width: 1800px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .room-container.active { display: grid; }
+        @media (max-width: 1100px) {
+            .room-container.active { grid-template-columns: 1fr; }
+        }
+
+        .left-room-col { display: flex; flex-direction: column; gap: 10px; }
+        .navigation-bar { display: flex; justify-content: space-between; align-items: center; }
+        .back-lobby-btn {
+            background: #2a2d3e; color: #fff; border: none; padding: 6px 12px;
+            border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; display: inline-flex; align-items: center; gap: 5px;
+        }
+        .back-lobby-btn:hover { background: #3a3d5e; }
+
+        .stream-section {
+            background: rgba(18, 20, 26, 0.95); border: 1px solid #2a2d3e; border-radius: 8px;
+            overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.8);
+            flex: 1; min-height: 500px; position: relative;
+        }
+        .video-wrapper { position: relative; width: 100%; flex: 1; background: #000; min-height: 480px; }
+        .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        
+        .no-stream {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            background: #0b0c10; color: #888; gap: 10px; font-size: 14px;
+        }
+
+        /* Sağ Panel (Sohbet & Özel) */
+        .chat-section {
+            background: #14161f; border: 1px solid #2a2d3e; border-radius: 8px;
+            display: flex; flex-direction: column; height: 750px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.8);
+        }
+        .chat-tabs {
+            display: flex; background: #101218; border-bottom: 1px solid #2a2d3e; font-size: 13px; font-weight: bold;
+        }
+        .chat-tab {
+            flex: 1; padding: 12px; text-align: center; cursor: pointer; color: #888; border-bottom: 2px solid transparent; transition: all 0.2s;
+        }
+        .chat-tab.active { color: #fff; border-bottom-color: #ff2a6d; background: rgba(255,42,109,0.05); }
+
+        .chat-content-pane {
+            display: none; flex: 1; flex-direction: column; overflow: hidden;
+        }
+        .chat-content-pane.active { display: flex; }
+
+        .chat-messages {
+            flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; font-size: 13px;
+        }
+        .chat-msg {
+            background: rgba(255, 255, 255, 0.02); padding: 6px 8px; border-radius: 4px; word-break: break-word;
+            display: flex; justify-content: space-between; align-items: flex-start; border-left: 2px solid #ff2a6d;
+        }
+        .msg-content { flex: 1; }
+        .chat-user { font-weight: bold; color: #ffb74d; margin-bottom: 2px; font-size: 12px; }
+        .chat-text { color: #e0e0e0; font-size: 12px; }
+        .chat-msg.private { border-left-color: #ffb700; background: rgba(255, 183, 0, 0.05); }
+        .chat-msg.tip { border-left-color: #4caf50; background: rgba(76, 175, 80, 0.08); }
+
+        /* IBAN Paneli */
+        .iban-top-panel {
+            background: rgba(255, 183, 0, 0.1);
+            border-bottom: 1px solid rgba(255, 183, 0, 0.3);
+            padding: 8px 12px;
+            font-size: 12px;
+            color: #ffb700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .iban-inline-box {
+            background: #000;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: #fff;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .chat-input-area {
+            padding: 10px; background: #101218; border-top: 1px solid #2a2d3e; display: flex; gap: 6px; align-items: center;
+        }
+        .chat-input {
+            flex: 1; background: #000; border: 1px solid #444; border-radius: 6px; padding: 8px 10px; color: #fff; font-size: 12px;
+        }
+        .chat-input:focus { outline: none; border-color: #ff2a6d; }
+        .chat-send-btn {
+            background: #ff2a6d; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; font-weight: bold; cursor: pointer;
+        }
+        .chat-send-btn:hover { background: #d91b55; }
+
+        /* Modallar */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9); display: flex; justify-content: center; align-items: center; z-index: 9999; padding: 20px;
+        }
+        .modal-box {
+            background: rgba(20, 22, 30, 0.98); border: 2px solid #ff2a6d; border-radius: 14px;
+            padding: 30px; width: 100%; max-width: 480px; box-shadow: 0 0 30px rgba(255, 42, 109, 0.5); display: flex; flex-direction: column; gap: 20px;
+        }
+        .modal-title { font-size: 20px; font-weight: bold; color: #ffffff; text-align: center; text-transform: uppercase; letter-spacing: 1px; }
+        .modal-desc { font-size: 12px; color: #b0aabf; line-height: 1.5; background: rgba(0, 0, 0, 0.5); padding: 12px; border-radius: 6px; border-left: 3px solid #ffb700; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-label { font-size: 13px; font-weight: 600; color: #ffb74d; }
+        .modal-input { background: #000; border: 1px solid #444; border-radius: 6px; padding: 10px 12px; color: #fff; font-size: 14px; }
+        .modal-input:focus { outline: none; border-color: #ff2a6d; }
+        .checkbox-container { display: flex; align-items: flex-start; gap: 10px; font-size: 12px; color: #ccc; cursor: pointer; user-select: none; }
+        .checkbox-container input { margin-top: 2px; accent-color: #ff2a6d; cursor: pointer; width: 16px; height: 16px; }
+        .modal-btn {
+            background: #ff2a6d; color: #fff; border: none; border-radius: 6px; padding: 12px;
+            font-size: 14px; font-weight: bold; cursor: pointer; transition: background 0.2s; text-transform: uppercase; letter-spacing: 1px;
+        }
+        .modal-btn:hover { background: #d91b55; }
+        .modal-btn:disabled { background: #444; color: #888; cursor: not-allowed; }
+
+        .mod-controls {
+            display: none; background: rgba(255, 183, 77, 0.1); border: 1px solid #ffb74d;
+            padding: 6px 10px; border-radius: 6px; margin-bottom: 8px; gap: 8px; align-items: center; justify-content: space-between;
+        }
+        .mod-controls.active { display: flex; }
+        .clear-chat-btn, .room-danger-btn {
+            background: #d32f2f; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer;
+        }
+        .clear-chat-btn:hover, .room-danger-btn:hover { background: #b71c1c; }
+        .room-danger-btn { background: #c62828; }
+    </style>
+</head>
+<body>
+
+    <!-- Giriş ve Yasal Uyarı Modalı -->
+    <div class="modal-overlay" id="login-modal">
+        <div class="modal-box">
+            <div class="modal-title">❤️ Click Lovers Giriş</div>
+            <div class="modal-desc">
+                Bu platform ücretsiz canlı yetişkin web yayını sunmaktadır. 
+                Yayıncılarla özel sohbet edebilmek için oyun içi IBAN üzerinden jeton göndermeniz gerekmektedir. 
+                <b>18 yaşından büyük olduğunuzu ve kuralları kabul ettiğinizi onaylayın.</b>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Kullanıcı Adınız / Takma Ad</label>
+                <input type="text" id="modal-username" class="modal-input" placeholder="Örn: LiveStar99">
+            </div>
+
+            <label class="checkbox-container">
+                <input type="checkbox" id="modal-agreement" onchange="toggleEnterButton()">
+                <span>18 yaşından büyük olduğumu ve yayın kurallarını kabul ettiğimi onaylıyorum.</span>
+            </label>
+
+            <button id="enter-btn" class="modal-btn" disabled onclick="joinApp()">Sisteme Giriş Yap</button>
+        </div>
+    </div>
+
+    <!-- Moderatör Giriş Modalı -->
+    <div class="modal-overlay" id="mod-login-modal" style="display: none;">
+        <div class="modal-box" style="border-color: #ffb74d;">
+            <div class="modal-title" style="color: #ffb74d;">🛡️ Site Moderatör Girişi</div>
+            <div class="form-group">
+                <label class="form-label">Yönetici Şifresi (PIN)</label>
+                <input type="password" id="mod-pass-input" class="modal-input" placeholder="Şifrenizi girin">
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="modal-btn" style="background: #333;" onclick="closeModModal()">İptal</button>
+                <button class="modal-btn" style="background: #ffb74d; color: #000;" onclick="verifyMod()">Yetki Al</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Oda Oluşturma Modalı -->
+    <div class="modal-overlay" id="create-room-modal" style="display: none;">
+        <div class="modal-box">
+            <div class="modal-title">✨ Yeni Yayın Odası Oluştur</div>
+            <div class="form-group">
+                <label class="form-label">Oda Adı</label>
+                <input type="text" id="new-room-name-input" class="modal-input" placeholder="Örn: Gece Sohbetleri ve Şov">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Oyun İçi IBAN (Bağış / Ödeme için)</label>
+                <input type="text" id="new-room-iban-input" class="modal-input" placeholder="Örn: 5576">
+            </div>
+            <div class="form-group">
+                <label class="form-label">W2G Embed Kodu veya URL</label>
+                <input type="text" id="new-room-embed-input" class="modal-input" placeholder="Örn: https://w2g.tv/embed?room_id=...">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button class="modal-btn" style="background: #333;" onclick="closeCreateRoomModal()">İptal</button>
+                <button class="modal-btn" onclick="submitCreateRoom()">Oda Oluştur</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Oda Düzenleme Modalı -->
+    <div class="modal-overlay" id="edit-room-modal" style="display: none;">
+        <div class="modal-box">
+            <div class="modal-title">⚙️ Oda ve IBAN Ayarları</div>
+            <div class="form-group">
+                <label class="form-label">Oda Adı</label>
+                <input type="text" id="edit-room-name-input" class="modal-input">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Oyun İçi IBAN</label>
+                <input type="text" id="edit-room-iban-input" class="modal-input">
+            </div>
+            <div class="form-group">
+                <label class="form-label">W2G Embed / URL</label>
+                <input type="text" id="edit-room-embed-input" class="modal-input">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button class="modal-btn" style="background: #333;" onclick="closeEditRoomModal()">İptal</button>
+                <button class="modal-btn" onclick="submitEditRoom()">Güncelle</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Üst Bar -->
+    <header>
+        <div class="logo-box" onclick="leaveRoom()">
+            <span style="font-size: 20px; font-weight: 900; color: #ff2a6d; letter-spacing: 1px;">❤️ CLICK LOVERS</span>
+        </div>
+        <div class="header-right">
+            <button class="create-room-btn" onclick="openCreateRoomModal()">➕ Oda Oluştur</button>
+            <button class="mod-btn" onclick="openModModal()">🛡️ Mod Paneli</button>
+            <div class="room-status">
+                <div class="status-dot"></div> <span id="header-user-badge">Misafir</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 1. LOBİ EKRANI -->
+    <div class="lobby-main-layout" id="lobby-view">
+        <div class="lobby-container">
+            <div class="lobby-header-flex">
+                <div class="lobby-title">🔴 Aktif Yayın Odaları</div>
+            </div>
+            <div class="tables-grid" id="tables-grid">
+                <!-- Dinamik -->
+            </div>
+        </div>
+        <!-- Lobi Yan Aktifler Paneli -->
+        <div class="active-users-sidebar">
+            <div class="sidebar-title">👥 Çevrimiçi Kullanıcılar</div>
+            <div class="users-list" id="lobby-active-users-list"></div>
+        </div>
+    </div>
+
+    <!-- 2. YAYIN ODASI EKRANI -->
+    <div class="room-container" id="room-view">
+        <div class="left-room-col">
+            <div class="navigation-bar">
+                <button class="back-lobby-btn" onclick="leaveRoom()">⬅️ Odalara Dön</button>
+            </div>
+            
+            <div class="stream-section">
+                <div class="video-wrapper" id="video-container">
+                    <div class="no-stream" id="no-stream-screen">
+                        <span>🔴 Bu odada aktif yayın bulunmuyor.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sağ Chat & Özel Mesaj Paneli -->
+        <div class="chat-section" id="chat-panel-container">
+            <div class="chat-tabs">
+                <div class="chat-tab active" onclick="switchTab('public')" id="tab-public-btn">Herkese açık</div>
+                <div class="chat-tab" onclick="switchTab('private')" id="tab-private-btn">Özel Sohbet 🔒</div>
+            </div>
+
+            <!-- IBAN Bilgi Alanı -->
+            <div class="iban-top-panel">
+                <span>💳 Yayıncı IBAN: <strong id="room-iban-display" class="iban-inline-box">Yükleniyor...</strong></span>
+                <span style="font-size: 10px; color: #ffcc00;">Özel sohbet için para gönderin!</span>
+            </div>
+            
+            <!-- Herkese Açık Sohbet Paneli -->
+            <div class="chat-content-pane active" id="pane-public">
+                <div class="mod-controls" id="mod-action-bar">
+                    <span style="font-size: 11px; font-weight: bold; color: #ffb74d;" id="mod-bar-title">👑 Oda Sahibi</span>
+                    <div style="display: flex; gap: 4px;">
+                        <button class="clear-chat-btn" onclick="openEditRoomModal()">⚙️ Ayarlar</button>
+                        <button class="clear-chat-btn" onclick="clearAllChat('public')">🗑️ Temizle</button>
+                        <button class="room-danger-btn" onclick="closeCurrentRoomByAdmin()">❌ Odayı Kapat</button>
+                    </div>
+                </div>
+                
+                <!-- Oda İçindeki Aktif Oturumlar / Kullanıcılar Bölümü -->
+                <div style="background: rgba(255,255,255,0.02); border-bottom: 1px solid #2a2d3e; padding: 6px 12px; font-size: 11px; display: flex; flex-direction: column; gap: 4px;">
+                    <span style="color: #ffb74d; font-weight: bold;">🟢 Odadaki Aktif Oturumlar (<span id="room-active-count">0</span>)</span>
+                    <div id="room-active-users-list" style="display: flex; flex-wrap: wrap; gap: 4px; max-height: 50px; overflow-y: auto;"></div>
+                </div>
+
+                <div class="chat-messages" id="chat-messages-public">
+                    <div class="chat-msg">
+                        <div class="msg-content">
+                            <div class="chat-user">Sistem</div>
+                            <div class="chat-text">Genel sohbete hoş geldiniz!</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" id="chat-text-input-public" class="chat-input" placeholder="Herkese açık mesaj yaz..." onkeypress="checkEnter(event, 'public')">
+                    <button class="chat-send-btn" onclick="sendMessage('public')">Gönder</button>
+                </div>
+            </div>
+
+            <!-- Özel Sohbet Paneli -->
+            <div class="chat-content-pane" id="pane-private">
+                <div id="private-lock-warning" style="padding: 20px; text-align: center; color: #aaa; font-size: 12px; margin: auto; display: flex; flex-direction: column; gap: 10px;">
+                    🔒 Yayıncı ile özel sohbet başlatabilmek için yukarıdaki oyun içi IBAN adresine para (jeton) transfer etmelisiniz. Para transferi sonrasında özel sohbet kilidiniz otomatik açılacaktır!
+                    <button class="enter-table-btn" style="padding: 8px; font-size: 11px;" onclick="simulateTipAndUnlock()">Simüle Et: IBAN'a Para Gönder ve Kilidi Aç</button>
+                </div>
+                <div id="private-chat-area" style="display: none; flex: 1; flex-direction: column; overflow: hidden;">
+                    <div class="chat-messages" id="chat-messages-private">
+                        <div class="chat-msg private">
+                            <div class="msg-content">
+                                <div class="chat-user">Sistem</div>
+                                <div class="chat-text">Özel sohbet aktif! Buradaki mesajları sadece siz ve yayıncı görebilirsiniz.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-input-area">
+                        <input type="text" id="chat-text-input-private" class="chat-input" placeholder="Yayıncıya özel mesaj yaz..." onkeypress="checkEnter(event, 'private')">
+                        <button class="chat-send-btn" onclick="sendMessage('private')">Gönder</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // FIREBASE BAĞLANTI AYARLARI
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyC8bruEKra7U1QclquhN9thLyYBVrYQjJI",
+            authDomain: "lovecasino.firebaseapp.com",
+            databaseURL: "https://lovecasino-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "lovecasino",
+            storageBucket: "lovecasino.firebasestorage.app",
+            messagingSenderId: "954852025357",
+            appId: "1:954852025357:web:21727daa837dae00742144",
+            measurementId: "G-RE4TLJHLD7"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.database();
+
+        let currentICName = "";
+        let currentRoomId = null;
+        let isModerator = false;
+        const MOD_SECRET_PIN = "5092026"; 
+        let myPresenceRef = null;
+
+        function toggleEnterButton() {
+            const usernameInputEl = document.getElementById('modal-username');
+            const agreementEl = document.getElementById('modal-agreement');
+            const enterBtnEl = document.getElementById('enter-btn');
+            
+            if (usernameInputEl && agreementEl && enterBtnEl) {
+                const username = usernameInputEl.value.trim();
+                const agreement = agreementEl.checked;
+                enterBtnEl.disabled = !(username !== "" && agreement);
+            }
+        }
+
+        const usernameInputEl = document.getElementById('modal-username');
+        if(usernameInputEl) {
+            usernameInputEl.addEventListener('input', toggleEnterButton);
+        }
+
+        const agreementEl = document.getElementById('modal-agreement');
+        if(agreementEl) {
+            agreementEl.addEventListener('change', toggleEnterButton);
+        }
+
+        function joinApp() {
+            const usernameInput = document.getElementById('modal-username').value.trim();
+            if (usernameInput === "") return;
+
+            if (localStorage.getItem('click_lovers_banned') === 'true') {
+                alert("Bu platformdan engellendiniz!");
+                return;
+            }
+
+            currentICName = usernameInput;
+            document.getElementById('header-user-badge').innerText = currentICName;
+            document.getElementById('login-modal').style.display = 'none';
+
+            updatePresence('lobby');
+            renderLobby();
+            listenGlobalActiveUsers();
+            checkBannedStatus();
+        }
+
+        function checkBannedStatus() {
+            db.ref('bans/' + encodeURIComponent(currentICName)).on('value', (snapshot) => {
+                if (snapshot.val() === true) {
+                    localStorage.setItem('click_lovers_banned', 'true');
+                    alert("Yönetici tarafından engellendiniz.");
+                    location.reload();
+                }
+            });
+        }
+
+        function updatePresence(locationId) {
+            if(!currentICName) return;
+
+            if(myPresenceRef) {
+                myPresenceRef.remove();
+            }
+
+            const userKey = currentICName.replace(/[.#$\/\[\]]/g, "_");
+            myPresenceRef = db.ref(`presence/${locationId}/${userKey}`);
+            
+            const userData = {
+                name: currentICName,
+                isMod: isModerator,
+                location: locationId,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            };
+
+            myPresenceRef.set(userData);
+            myPresenceRef.onDisconnect().remove();
+        }
+
+        // --- SEKME YÖNETİMİ ---
+        function switchTab(tabName) {
+            document.querySelectorAll('.chat-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.chat-content-pane').forEach(p => p.classList.remove('active'));
+
+            if(tabName === 'public') {
+                document.getElementById('tab-public-btn').classList.add('active');
+                document.getElementById('pane-public').classList.add('active');
+            } else if(tabName === 'private') {
+                document.getElementById('tab-private-btn').classList.add('active');
+                document.getElementById('pane-private').classList.add('active');
+                checkPrivateChatAccess();
+            }
+        }
+
+        // --- ODA OLUŞTURMA & YÖNETİMİ ---
+        function openCreateRoomModal() {
+            if(!currentICName) return;
+            document.getElementById('create-room-modal').style.display = 'flex';
+        }
+
+        function closeCreateRoomModal() {
+            document.getElementById('create-room-modal').style.display = 'none';
+        }
+
+        function submitCreateRoom() {
+            const roomName = document.getElementById('new-room-name-input').value.trim();
+            const roomIban = document.getElementById('new-room-iban-input').value.trim();
+            let embedCode = document.getElementById('new-room-embed-input').value.trim();
+
+            if(!roomName || !embedCode || !roomIban) {
+                alert("Lütfen oda adı, IBAN ve W2G embed kodunu eksiksiz girin.");
+                return;
+            }
+
+            if(!embedCode.includes('<iframe')) {
+                embedCode = `<iframe frameborder='0' width='100%' height='100%' src='${embedCode}' allowfullscreen allow='autoplay; fullscreen; camera; microphone;'></iframe>`;
+            }
+
+            const newRoomRef = db.ref('rooms').push();
+            const roomId = newRoomRef.key;
+
+            const roomData = {
+                id: roomId,
+                name: roomName,
+                owner: currentICName,
+                iban: roomIban,
+                embedCode: embedCode,
+                createdAt: firebase.database.ServerValue.TIMESTAMP
+            };
+
+            newRoomRef.set(roomData).then(() => {
+                closeCreateRoomModal();
+                enterRoom(roomId, roomName);
+            });
+        }
+
+        function openEditRoomModal() {
+            if(!currentRoomId) return;
+            db.ref(`rooms/${currentRoomId}`).once('value', (snap) => {
+                const room = snap.val();
+                if(!room) return;
+                
+                if(room.owner !== currentICName && !isModerator) {
+                    alert("Bu odayı düzenleme yetkiniz yok!");
+                    return;
+                }
+
+                document.getElementById('edit-room-name-input').value = room.name || '';
+                document.getElementById('edit-room-iban-input').value = room.iban || '';
+                document.getElementById('edit-room-embed-input').value = room.embedCode || '';
+                document.getElementById('edit-room-modal').style.display = 'flex';
+            });
+        }
+
+        function closeEditRoomModal() {
+            document.getElementById('edit-room-modal').style.display = 'none';
+        }
+
+        function submitEditRoom() {
+            if(!currentRoomId) return;
+            const newName = document.getElementById('edit-room-name-input').value.trim();
+            const newIban = document.getElementById('edit-room-iban-input').value.trim();
+            let newEmbed = document.getElementById('edit-room-embed-input').value.trim();
+
+            if(!newName || !newEmbed || !newIban) {
+                alert("Alanlar boş bırakılamaz.");
+                return;
+            }
+
+            if(!newEmbed.includes('<iframe')) {
+                newEmbed = `<iframe frameborder='0' width='100%' height='100%' src='${newEmbed}' allowfullscreen allow='autoplay; fullscreen; camera; microphone;'></iframe>`;
+            }
+
+            db.ref(`rooms/${currentRoomId}`).update({
+                name: newName,
+                iban: newIban,
+                embedCode: newEmbed
+            }).then(() => {
+                closeEditRoomModal();
+                alert("Oda güncellendi!");
+            });
+        }
+
+        function closeCurrentRoomByAdmin() {
+            if(!currentRoomId) return;
+            db.ref(`rooms/${currentRoomId}`).once('value', (snap) => {
+                const room = snap.val();
+                if(!room) return;
+
+                if(room.owner !== currentICName && !isModerator) {
+                    alert("Bu odayı kapatma yetkiniz yok!");
+                    return;
+                }
+
+                if(confirm("Bu odayı tamamen kapatmak/silmek istediğinize emin misiniz?")) {
+                    db.ref(`rooms/${currentRoomId}`).remove();
+                    db.ref(`chats_public/${currentRoomId}`).remove();
+                    db.ref(`chats_private/${currentRoomId}`).remove();
+                    leaveRoom();
+                }
+            });
+        }
+
+        function renderLobby() {
+            const grid = document.getElementById('tables-grid');
+            
+            db.ref('rooms').on('value', (snapshot) => {
+                grid.innerHTML = '';
+                const rooms = snapshot.val() || {};
+                
+                const roomKeys = Object.keys(rooms);
+                if(roomKeys.length === 0) {
+                    grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #888; padding: 40px;">Aktif oda yok. <b>"Oda Oluştur"</b> butonuna tıklayarak ilk odayı sen aç!</div>`;
+                    return;
+                }
+
+                roomKeys.forEach(roomId => {
+                    const room = rooms[roomId];
+                    let card = document.createElement('div');
+                    card.className = 'table-card';
+                    card.innerHTML = `
+                        <div class="table-card-header">
+                            <span>${escapeHtml(room.name)}</span>
+                            <span style="font-size: 11px; color: #4caf50;">● Yayında</span>
+                        </div>
+                        <div class="table-card-info">
+                            <span>Yayıncı: <b>${escapeHtml(room.owner)}</b></span>
+                            <span>IBAN: ${escapeHtml(room.iban || 'Belirtilmemiş')}</span>
+                        </div>
+                        <button class="enter-table-btn" onclick="enterRoom('${roomId}', '${escapeHtml(room.name)}')">Odaya Katıl</button>
+                    `;
+                    grid.appendChild(card);
+                });
+            });
+        }
+
+        function enterRoom(roomId, roomName) {
+            currentRoomId = roomId;
+            document.getElementById('lobby-view').style.display = 'none';
+            document.getElementById('room-view').classList.add('active');
+
+            updatePresence(roomId);
+            listenRoomData();
+            listenMessages('public');
+            listenMessages('private');
+            listenRoomActiveUsers();
+        }
+
+        function leaveRoom() {
+            currentRoomId = null;
+            document.getElementById('room-view').classList.remove('active');
+            document.getElementById('lobby-view').style.display = 'grid';
+
+            updatePresence('lobby');
+            updateActiveLists();
+        }
+
+        function listenGlobalActiveUsers() {
+            db.ref('presence').on('value', () => {
+                updateActiveLists();
+            });
+        }
+
+        function updateActiveLists() {
+            db.ref('presence').once('value', (presenceSnap) => {
+                const presenceData = presenceSnap.val() || {};
+                let lobbyUsersHtml = '';
+
+                if(presenceData['lobby']) {
+                    Object.values(presenceData['lobby']).forEach(user => {
+                        lobbyUsersHtml += `
+                            <div class="user-item">
+                                <span>${escapeHtml(user.name)}</span>
+                                <span class="user-tag tag-watcher">Lobide</span>
+                            </div>
+                        `;
+                    });
+                }
+                const lobbyListEl = document.getElementById('lobby-active-users-list');
+                if(lobbyListEl) {
+                    lobbyListEl.innerHTML = lobbyUsersHtml || '<div style="font-size:11px; color:#666; text-align:center;">Kimse yok</div>';
+                }
+            });
+        }
+
+        function listenRoomActiveUsers() {
+            if(!currentRoomId) return;
+            db.ref(`presence/${currentRoomId}`).on('value', (snap) => {
+                const users = snap.val() || {};
+                const listEl = document.getElementById('room-active-users-list');
+                const countEl = document.getElementById('room-active-count');
+                
+                listEl.innerHTML = '';
+                const userEntries = Object.values(users);
+                countEl.innerText = userEntries.length;
+
+                if(userEntries.length === 0) {
+                    listEl.innerHTML = `<span style="color:#666; font-size:10px;">Oturum açan kimse yok</span>`;
+                    return;
+                }
+
+                userEntries.forEach(u => {
+                    let badge = document.createElement('span');
+                    badge.style.cssText = "background: rgba(255,42,109,0.15); border: 1px solid rgba(255,42,109,0.3); padding: 2px 6px; border-radius: 4px; font-size: 10px; color: #fff;";
+                    badge.innerText = u.name;
+                    listEl.appendChild(badge);
+                });
+            });
+        }
+
+        function listenRoomData() {
+            if(!currentRoomId) return;
+
+            db.ref(`rooms/${currentRoomId}`).on('value', (snapshot) => {
+                const data = snapshot.val();
+                if(!data) {
+                    alert("Bu oda kapatıldı.");
+                    leaveRoom();
+                    return;
+                }
+
+                document.getElementById('room-iban-display').innerText = data.iban || "IBAN Eklenmemiş";
+
+                const videoWrapper = document.getElementById('video-container');
+                if(data.embedCode && data.embedCode.trim() !== "") {
+                    videoWrapper.innerHTML = data.embedCode;
+                } else {
+                    videoWrapper.innerHTML = `<div class="no-stream"><span>🔴 Aktif yayın yok.</span></div>`;
+                }
+
+                const isOwner = (data.owner === currentICName);
+                const actionBar = document.getElementById('mod-action-bar');
+                if(isOwner || isModerator) {
+                    actionBar.classList.add('active');
+                    document.getElementById('mod-bar-title').innerText = isOwner ? '👑 Oda Sahibi' : '🛡️ Mod';
+                } else {
+                    actionBar.classList.remove('active');
+                }
+            });
+        }
+
+        function simulateTipAndUnlock() {
+            if(!currentRoomId) return;
+
+            db.ref(`rooms/${currentRoomId}`).once('value', (snap) => {
+                const room = snap.val();
+                if(!room) return;
+
+                db.ref(`chats_public/${currentRoomId}`).push({
+                    user: currentICName,
+                    text: `💰 [IBAN TRANSFERİ] Yayıncının ${room.iban} numaralı IBAN hesabına bağış yapıldı ve özel sohbet kilidi açıldı!`,
+                    isTip: true
+                });
+
+                db.ref(`private_access/${currentRoomId}/${currentICName.replace(/[.#$\/\[\]]/g, "_")}`).set(true);
+
+                alert("Ödeme onaylandı! Özel sohbet kilidiniz açıldı.");
+                checkPrivateChatAccess();
+            });
+        }
+
+        function checkPrivateChatAccess() {
+            if(!currentRoomId) return;
+            db.ref(`rooms/${currentRoomId}`).once('value', (roomSnap) => {
+                const room = roomSnap.val();
+                if(!room) return;
+
+                const isOwner = (room.owner === currentICName);
+                if(isOwner || isModerator) {
+                    document.getElementById('private-lock-warning').style.display = 'none';
+                    document.getElementById('private-chat-area').style.display = 'flex';
+                    return;
+                }
+
+                const userKey = currentICName.replace(/[.#$\/\[\]]/g, "_");
+                db.ref(`private_access/${currentRoomId}/${userKey}`).once('value', (accessSnap) => {
+                    if(accessSnap.val() === true) {
+                        document.getElementById('private-lock-warning').style.display = 'none';
+                        document.getElementById('private-chat-area').style.display = 'flex';
+                    } else {
+                        document.getElementById('private-lock-warning').style.display = 'flex';
+                        document.getElementById('private-chat-area').style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        // --- MESAJLAŞMA SİSTEMİ ---
+        function sendMessage(type) {
+            if (localStorage.getItem('click_lovers_banned') === 'true' || !currentRoomId) return;
+
+            const inputEl = document.getElementById(type === 'public' ? 'chat-text-input-public' : 'chat-text-input-private');
+            const text = inputEl.value.trim();
+            if (text === '' || currentICName === '') return;
+
+            if(type === 'public') {
+                db.ref(`chats_public/${currentRoomId}`).push({
+                    user: currentICName,
+                    text: text
+                });
+            } else {
+                db.ref(`chats_private/${currentRoomId}`).push({
+                    user: currentICName,
+                    text: text
+                });
+            }
+
+            inputEl.value = '';
+        }
+
+        function listenMessages(type) {
+            const containerId = type === 'public' ? 'chat-messages-public' : 'chat-messages-private';
+            const messagesContainer = document.getElementById(containerId);
+            const dbNode = type === 'public' ? `chats_public/${currentRoomId}` : `chats_private/${currentRoomId}`;
+            
+            if(!currentRoomId) return;
+            
+            db.ref(dbNode).limitToLast(50).on('value', (snapshot) => {
+                messagesContainer.innerHTML = ''; 
+                const data = snapshot.val();
+                if (data) {
+                    Object.entries(data).forEach(([key, msg]) => {
+                        const msgDiv = document.createElement('div');
+                        msgDiv.className = `chat-msg ${type === 'private' ? 'private' : ''} ${msg.isTip ? 'tip' : ''}`;
+                        
+                        msgDiv.innerHTML = `
+                            <div class="msg-content">
+                                <div class="chat-user">${escapeHtml(msg.user)}</div>
+                                <div class="chat-text">${escapeHtml(msg.text)}</div>
+                            </div>
+                        `;
+                        messagesContainer.appendChild(msgDiv);
+                    });
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }
+            });
+        }
+
+        function clearAllChat(type) {
+            if (!currentRoomId) return;
+            if (confirm("Sohbet geçmişini temizlemek istiyor musunuz?")) {
+                db.ref(type === 'public' ? `chats_public/${currentRoomId}` : `chats_private/${currentRoomId}`).remove();
+            }
+        }
+
+        function openModModal() {
+            if (isModerator) {
+                isModerator = false;
+                alert("Moderatör yetkisinden çıkıldı.");
+                return;
+            }
+            document.getElementById('mod-login-modal').style.display = 'flex';
+        }
+
+        function closeModModal() {
+            document.getElementById('mod-login-modal').style.display = 'none';
+        }
+
+        function verifyMod() {
+            const pin = document.getElementById('mod-pass-input').value;
+            if (pin === MOD_SECRET_PIN) {
+                isModerator = true;
+                document.getElementById('mod-login-modal').style.display = 'none';
+                document.getElementById('mod-pass-input').value = '';
+                alert("Moderatör yetkisi aktif edildi!");
+            } else {
+                alert("Hatalı Şifre!");
+            }
+        }
+
+        function checkEnter(event, type) {
+            if (event.key === 'Enter') {
+                sendMessage(type);
+            }
+        }
+
+        function escapeHtml(string) {
+            return string.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
