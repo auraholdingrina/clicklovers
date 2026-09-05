@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Click Lovers - Canlı Yetişkin Web ve Özel Sohbet Sistemi</title>
+    <title>Click Lovers - Canlı Yetişkin Web ve Lobi Sohbet Sistemi</title>
     <!-- Firebase SDK (Google CDN) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -59,14 +59,14 @@
         .status-dot { width: 8px; height: 8px; background-color: #4caf50; border-radius: 50%; box-shadow: 0 0 8px #4caf50; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 
-        /* Lobi Ekranı */
+        /* Lobi Ekranı Düzeni */
         .lobby-main-layout {
             padding: 30px 20px;
             max-width: 1400px;
             margin: 0 auto;
             width: 100%;
             display: grid;
-            grid-template-columns: 1fr 300px;
+            grid-template-columns: 1fr 320px;
             gap: 20px;
         }
         @media (max-width: 1024px) {
@@ -116,7 +116,13 @@
         }
         .enter-table-btn:hover { background: #d91b55; }
 
-        /* Aktif Kullanıcılar Yan Panel */
+        /* Lobi Sağ Sidebar (Çevrimiçi Kullanıcılar + Lobi Sohbet Paneli) */
+        .lobby-sidebar-col {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
         .active-users-sidebar {
             background: rgba(20, 22, 30, 0.95);
             border: 2px solid #2a2d3e;
@@ -125,7 +131,7 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
-            max-height: 650px;
+            max-height: 250px;
         }
         .sidebar-title {
             font-size: 14px; font-weight: bold; color: #ffb74d;
@@ -136,9 +142,76 @@
             background: rgba(255, 255, 255, 0.03); padding: 8px 10px; border-radius: 6px; font-size: 12px;
             display: flex; justify-content: space-between; align-items: center; border-left: 3px solid #4caf50;
         }
-        .user-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
-        .tag-watcher { background: rgba(76, 175, 80, 0.2); color: #4caf50; }
-        .tag-room { background: rgba(255, 42, 109, 0.2); color: #ff2a6d; }
+
+        /* Lobi Genel Sohbet Kutusu */
+        .lobby-chat-box {
+            background: rgba(20, 22, 30, 0.95);
+            border: 2px solid #2a2d3e;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            height: 380px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.8);
+        }
+        .lobby-chat-header {
+            background: #14161f;
+            padding: 10px 15px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #ffb74d;
+            border-bottom: 1px solid #2a2d3e;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .lobby-chat-messages {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 12px;
+        }
+        .lobby-chat-msg {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 6px 8px;
+            border-radius: 4px;
+            word-break: break-word;
+            border-left: 2px solid #ff2a6d;
+        }
+        .lobby-chat-user { font-weight: bold; color: #ffb74d; margin-bottom: 2px; }
+        .lobby-chat-text { color: #e0e0e0; }
+
+        .lobby-chat-input-area {
+            padding: 8px;
+            background: #101218;
+            border-top: 1px solid #2a2d3e;
+            display: flex;
+            gap: 6px;
+        }
+        .lobby-chat-input {
+            flex: 1;
+            background: #000;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 6px 10px;
+            color: #fff;
+            font-size: 12px;
+        }
+        .lobby-chat-input:focus { outline: none; border-color: #ff2a6d; }
+        .lobby-chat-send-btn {
+            background: #ff2a6d;
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .lobby-chat-send-btn:hover { background: #d91b55; }
 
         /* Yayın Odası Ekranı */
         .room-container {
@@ -389,10 +462,31 @@
                 <!-- Dinamik -->
             </div>
         </div>
-        <!-- Lobi Yan Aktifler Paneli -->
-        <div class="active-users-sidebar">
-            <div class="sidebar-title">👥 Çevrimiçi Kullanıcılar</div>
-            <div class="users-list" id="lobby-active-users-list"></div>
+
+        <!-- Lobi Sağ Yan Kolon (Çevrimiçi Kullanıcılar + Lobi Sohbet) -->
+        <div class="lobby-sidebar-col">
+            <div class="active-users-sidebar">
+                <div class="sidebar-title">👥 Çevrimiçi Kullanıcılar</div>
+                <div class="users-list" id="lobby-active-users-list"></div>
+            </div>
+
+            <!-- Lobi Genel Sohbet Paneli -->
+            <div class="lobby-chat-box">
+                <div class="lobby-chat-header">
+                    <span>💬 Lobi Sohbeti</span>
+                    <span style="font-size: 10px; color: #4caf50;">● Canlı</span>
+                </div>
+                <div class="lobby-chat-messages" id="lobby-chat-messages">
+                    <div class="lobby-chat-msg">
+                        <div class="lobby-chat-user">Sistem</div>
+                        <div class="lobby-chat-text">Genel lobiye hoş geldiniz!</div>
+                    </div>
+                </div>
+                <div class="lobby-chat-input-area">
+                    <input type="text" id="lobby-chat-input" class="lobby-chat-input" placeholder="Lobiye mesaj yaz..." onkeypress="checkLobbyEnter(event)">
+                    <button class="lobby-chat-send-btn" onclick="sendLobbyMessage()">Gönder</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -542,8 +636,7 @@
             document.getElementById('login-modal').style.display = 'none';
 
             updatePresence('lobby');
-            renderLobby();
-            listenGlobalActiveUsers();
+            startGlobalListeners(); 
             checkBannedStatus();
         }
 
@@ -576,6 +669,57 @@
 
             myPresenceRef.set(userData);
             myPresenceRef.onDisconnect().remove();
+        }
+
+        // --- GLOBAL DİNLEYİCİLER (ODALAR, LOBİ & LOBİ SOHBETİ) ---
+        function startGlobalListeners() {
+            renderLobby();
+            listenGlobalActiveUsers();
+            listenLobbyMessages();
+        }
+
+        // --- LOBİ SOHBET FONKSİYONLARI ---
+        function sendLobbyMessage() {
+            if (localStorage.getItem('click_lovers_banned') === 'true' || currentRoomId !== null) return;
+            const inputEl = document.getElementById('lobby-chat-input');
+            const text = inputEl.value.trim();
+            if (text === '' || currentICName === '') return;
+
+            db.ref('chats_lobby').push({
+                user: currentICName,
+                text: text,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            });
+
+            inputEl.value = '';
+        }
+
+        function listenLobbyMessages() {
+            const messagesContainer = document.getElementById('lobby-chat-messages');
+            if(!messagesContainer) return;
+
+            db.ref('chats_lobby').limitToLast(50).on('value', (snapshot) => {
+                messagesContainer.innerHTML = '';
+                const data = snapshot.val();
+                if (data) {
+                    Object.entries(data).forEach(([key, msg]) => {
+                        const msgDiv = document.createElement('div');
+                        msgDiv.className = 'lobby-chat-msg';
+                        msgDiv.innerHTML = `
+                            <div class="lobby-chat-user">${escapeHtml(msg.user)}</div>
+                            <div class="lobby-chat-text">${escapeHtml(msg.text)}</div>
+                        `;
+                        messagesContainer.appendChild(msgDiv);
+                    });
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }
+            });
+        }
+
+        function checkLobbyEnter(event) {
+            if (event.key === 'Enter') {
+                sendLobbyMessage();
+            }
         }
 
         // --- SEKME YÖNETİMİ ---
@@ -632,6 +776,8 @@
             newRoomRef.set(roomData).then(() => {
                 closeCreateRoomModal();
                 enterRoom(roomId, roomName);
+            }).catch((error) => {
+                alert("Oda oluşturulamadı: " + error.message);
             });
         }
 
@@ -753,7 +899,7 @@
             document.getElementById('lobby-view').style.display = 'grid';
 
             updatePresence('lobby');
-            updateActiveLists();
+            startGlobalListeners();
         }
 
         function listenGlobalActiveUsers() {
@@ -772,7 +918,7 @@
                         lobbyUsersHtml += `
                             <div class="user-item">
                                 <span>${escapeHtml(user.name)}</span>
-                                <span class="user-tag tag-watcher">Lobide</span>
+                                <span class="user-tag" style="background: rgba(76, 175, 80, 0.2); color: #4caf50; padding: 2px 6px; border-radius: 4px; font-size: 10px;">Lobide</span>
                             </div>
                         `;
                     });
@@ -791,6 +937,7 @@
                 const listEl = document.getElementById('room-active-users-list');
                 const countEl = document.getElementById('room-active-count');
                 
+                if(!listEl || !countEl) return;
                 listEl.innerHTML = '';
                 const userEntries = Object.values(users);
                 countEl.innerText = userEntries.length;
@@ -886,7 +1033,7 @@
             });
         }
 
-        // --- MESAJLAŞMA SİSTEMİ ---
+        // --- MESAJLAŞMA SİSTEMİ (ODA İÇİ) ---
         function sendMessage(type) {
             if (localStorage.getItem('click_lovers_banned') === 'true' || !currentRoomId) return;
 
