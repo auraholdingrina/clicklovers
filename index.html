@@ -116,7 +116,7 @@
         }
         .enter-table-btn:hover { background: #d91b55; }
 
-        /* Lobi Sağ Sidebar (Çevrimiçi Kullanıcılar + Lobi Sohbet Paneli) */
+        /* Lobi Sağ Sidebar */
         .lobby-sidebar-col {
             display: flex;
             flex-direction: column;
@@ -463,7 +463,7 @@
             </div>
         </div>
 
-        <!-- Lobi Sağ Yan Kolon (Çevrimiçi Kullanıcılar + Lobi Sohbet) -->
+        <!-- Lobi Sağ Yan Kolon -->
         <div class="lobby-sidebar-col">
             <div class="active-users-sidebar">
                 <div class="sidebar-title">👥 Çevrimiçi Kullanıcılar</div>
@@ -576,7 +576,7 @@
 
     <script>
         // ==========================================
-        // FIREBASE BAĞLANTI AYARLARI
+        // FIREBASE BAĞLANTI AYARLARI (Belgium Bölgesi Güncel URL)
         // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyC8bruEKra7U1QclquhN9thLyYBVrYQjJI",
@@ -671,7 +671,6 @@
             myPresenceRef.onDisconnect().remove();
         }
 
-        // --- GLOBAL DİNLEYİCİLER (ODALAR, LOBİ & LOBİ SOHBETİ) ---
         function startGlobalListeners() {
             renderLobby();
             listenGlobalActiveUsers();
@@ -878,6 +877,9 @@
                     `;
                     grid.appendChild(card);
                 });
+            }, (error) => {
+                console.error("Firebase Read Error:", error);
+                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #ff4444; padding: 40px;">Odalar yüklenirken hata oluştu.</div>`;
             });
         }
 
