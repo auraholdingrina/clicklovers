@@ -576,7 +576,7 @@
 
     <script>
         // ==========================================
-        // FIREBASE BAĞLANTI AYARLARI (Belgium Bölgesi Güncel URL)
+        // FIREBASE BAĞLANTI AYARLARI
         // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyC8bruEKra7U1QclquhN9thLyYBVrYQjJI",
@@ -853,6 +853,7 @@
             db.ref('rooms').on('value', (snapshot) => {
                 grid.innerHTML = '';
                 const rooms = snapshot.val() || {};
+                console.log("Firebase 'rooms' verisi:", rooms); // Tarayıcı konsolunda veriyi görmek için
                 
                 const roomKeys = Object.keys(rooms);
                 if(roomKeys.length === 0) {
@@ -862,18 +863,25 @@
 
                 roomKeys.forEach(roomId => {
                     const room = rooms[roomId];
+                    // room1, room2 gibi manuel eklenen ve içi nesne olmayan verileri filtrele veya destekle
+                    if (!room || typeof room !== 'object') return;
+
+                    let roomName = room.name || roomId;
+                    let roomOwner = room.owner || 'Bilinmiyor';
+                    let roomIban = room.iban || 'Yok';
+
                     let card = document.createElement('div');
                     card.className = 'table-card';
                     card.innerHTML = `
                         <div class="table-card-header">
-                            <span>${escapeHtml(room.name)}</span>
+                            <span>${escapeHtml(roomName)}</span>
                             <span style="font-size: 11px; color: #4caf50;">● Yayında</span>
                         </div>
                         <div class="table-card-info">
-                            <span>Yayıncı: <b>${escapeHtml(room.owner)}</b></span>
-                            <span>IBAN: ${escapeHtml(room.iban || 'Belirtilmemiş')}</span>
+                            <span>Yayıncı: <b>${escapeHtml(roomOwner)}</b></span>
+                            <span>IBAN: ${escapeHtml(roomIban)}</span>
                         </div>
-                        <button class="enter-table-btn" onclick="enterRoom('${roomId}', '${escapeHtml(room.name)}')">Odaya Katıl</button>
+                        <button class="enter-table-btn" onclick="enterRoom('${roomId}', '${escapeHtml(roomName)}')">Odaya Katıl</button>
                     `;
                     grid.appendChild(card);
                 });
@@ -1061,7 +1069,7 @@
         function listenMessages(type) {
             const containerId = type === 'public' ? 'chat-messages-public' : 'chat-messages-private';
             const messagesContainer = document.getElementById(containerId);
-            const dbNode = type === 'public' ? `chats_public/${currentRoomId}` : `chats_private/${currentRoomId}`;
+            const dbNode = type === 'public' ? `chats_public/${currentRoomId}` : `chats_private/${currentRowId}`;
             
             if(!currentRoomId) return;
             
@@ -1114,7 +1122,7 @@
                 document.getElementById('mod-pass-input').value = '';
                 alert("Moderatör yetkisi aktif edildi!");
             } else {
-                alert("Hatalı Şifre!");
+                alert("Hatalı Şifre!")
             }
         }
 
